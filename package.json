@@ -1,0 +1,44 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "@koa/router": "^9.0.1",
+    "art-template": "^4.13.2",
+    "babel-runtime": "^6.26.0",
+    "cross-env": "^7.0.2",
+    "debug": "^4.2.0",
+    "ejs": "^3.1.3",
+    "html-minifier": "^4.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "koa": "^2.12.0",
+    "koa-art-template": "^1.1.1",
+    "koa-body": "^4.1.3",
+    "koa-jwt": "^4.0.0",
+    "koa-logger": "^3.2.1",
+    "koa-session": "^6.0.0",
+    "koa-session-local": "^1.0.4",
+    "koa-static": "^5.0.0",
+    "koa-static-server": "^1.5.2",
+    "koa-views": "^6.2.3",
+    "koa2-weixin-auth": "^1.0.2",
+    "koa3-wechat": "^1.1.9",
+    "nodemon": "^2.0.4",
+    "redis": "^3.0.2",
+    "request-promise": "^4.2.6",
+    "sha1": "^1.1.1",
+    "short-uuid": "^4.1.0",
+    "weixin-pay": "^1.1.7"
+  },
+  "devDependencies": {
+    "mysql2": "^2.1.0",
+    "sequelize": "^6.3.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "cross-env DEBUG=app:wepay nodemon app.js"
+  },
+  "author": "",
+  "license": "MIT"
+}
