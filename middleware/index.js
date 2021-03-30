@@ -28,7 +28,6 @@ module.exports = app => {
       collapseWhitespace: true,
       minifyCSS: true,
       minifyJS: true,
-      // 运行时自动合并：rules.map(rule => rule.test)
       ignoreCustomFragments: []
     },
     escape: true,
@@ -52,16 +51,17 @@ module.exports = app => {
     ctx.set('X-Response-Time', `${ms}ms`)
   })
 
-  // 借用 koa-session，设置 session 中间件，在服务端生成 session，并存在服务器内
+  // koa-session会自动将生成的session写入cookie里，也可以将session存储在外部store里，需要配合koa-session-local一起使用
   app.keys = ['koakeys'] // 加密cookie时的密钥
   const CONFIG = {
-    store: new store(), // 生成的 session 存在服务器内
-    key: 'koa.sess', // cookie key
+    store: new store(), // 生成的 session 存在外部store里
+    key: 'koa.sess', // cookie的key，koa-session会自动将session写入cookie里
     maxAge: 86400000,
     autoCommit: true,
     overwrite: true,
     httpOnly: false, // true时，客户端js将无法读取到cookie信息，调试时设成 false
-    signed: true, // true时，需要对 app.keys 赋值，否则会报错。false 时，app.keys 不赋值没有关系
+    signed: true, // true时，需要对app.keys赋值，否则会报错。false 时，app.keys 不赋值没有关系
+                  // true时，会在cookie里加上sha256的签名，生成一个类似koa:sess.sig，防止cookie被篡改
     rolling: false,
     renew: false,
     secure: false, // 本地没有开启https，调试时会遇到：Error: Cannot send secure cookie over unencrypted connection，所以调试时设成 false
@@ -69,10 +69,11 @@ module.exports = app => {
   }
   app.use(session(CONFIG, app))
 
-  app.use(async function (ctx, next) { // 自定义读写cookie的中间件
-    const n = ~~ctx.cookies.get('view') + 1
-    ctx.cookies.set('view', n, {httpOnly:false}) // httpOnly:false后，客户端js才能取出cookie
-    await next()
-  })
+  // // 测试用 访问 http://localhost:3000/ 观察cookie里保存的session
+  // app.use(async function (ctx, next) { // 自定义读写cookie的中间件
+  //   const n = ~~ctx.cookies.get('view') + 1
+  //   ctx.cookies.set('view', n, {httpOnly:false}) // httpOnly:false后，客户端js才能取出cookie
+  //   await next()
+  // })
 }
 

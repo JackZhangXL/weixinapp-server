@@ -103,11 +103,15 @@ router.all('/home', async function (ctx) {
 router.all('/web-view', async function (ctx) {
   const token = ctx.request.query.token
   ctx.session.sessionKeyRecordId = ~~ctx.session.sessionKeyRecordId + 1
+  console.log('web-view router ctx.session: ', ctx.session)
 
-  if (token) ctx.cookies.set('Authorization', `Bearer ${token}`, { httpOnly: false }) // url 上的 token 写入 cookie
+  if (token) {
+    ctx.cookies.set('Authorization', `Bearer ${token}`, { httpOnly: false }) // url 上的 token 写入 cookie
+  }
 
   await ctx.render('index2', {
-    title: 'web view from server, sessionid: ' + ctx.session.sessionKeyRecordId,
+    title: 'web view from server',
+    sessionKeyRecordId: ctx.session.sessionKeyRecordId,
     now: new Date()
   })
 })

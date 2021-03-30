@@ -1,6 +1,7 @@
 {{extend './layout.html'}}
 {{block 'content'}}
-  <p>Art-Template Welcome to {{title}}</p>
+  <p>{{title}}</p>
+  <p>sessionKeyRecordId: {{sessionKeyRecordId}}</p>
   <p>{{now | dateFormat "yyyy-MM-dd hh:mm:ss"}}</p>
 
   <input id="name" value="zxl" /><br /><br />
@@ -8,7 +9,7 @@
   <p id="output"></p>
   <input id="share-btn" type="button" value="share" style="width: 100px;height:30px;border:solid 1px grey;"></input>
   <script type="text/javascript">
-    document.addEventListener('intoMiniprogram', () => { // 当处于小程序内
+    document.addEventListener('intoMiniprogram', () => { // 只有在小程序内，才会获取数据。浏览器打开页面，不会取数据
       retrieveHomeData()
     }, false)
 
@@ -17,20 +18,20 @@
     function changeIsInMiniprogramState() {
       if (!isInMiniprogram) {
         isInMiniprogram = true
-        $.cookie("isInMiniprogram", true)
-        document.dispatchEvent(new Event('intoMiniprogram'))
+        $.cookie("isInMiniprogram", true) // 写入cookie，供webview的后续跳转页面判断是否在小程序容器中
+        document.dispatchEvent(new Event('intoMiniprogram')) // 发event让页面retrieveHomeData取数据
         console.log('isInMiniprogram', isInMiniprogram);
       }
     }
-    if (/token=\d+/.test(window.location.search)) {
+    if (/token=\d+/.test(window.location.search)) { // 小程序打开webview时url上设置了token
       changeIsInMiniprogramState()
-    } else if ( /miniProgram/.test(navigator.userAgent) ){
+    } else if ( /miniProgram/.test(navigator.userAgent) ) { // 看ua是不是小程序
       changeIsInMiniprogramState()
-    }else if (($.cookie("isInMiniprogram") || '') == 'true') {
+    } else if (($.cookie("isInMiniprogram") || '') == 'true') { // 从cookie里判断是不是webview的后续跳转
       changeIsInMiniprogramState()
-    } else {
+    } else { // 上面自定义的判断都不对，最后用小程序官网推荐的判断方法进行兜底
       function onWeixinJSBridgeReady() {
-        if (window.__wxjs_environment === 'miniprogram'){
+        if (window.__wxjs_environment === 'miniprogram') {
           changeIsInMiniprogramState()
         }
       }
@@ -41,7 +42,6 @@
       }
     }
 
-    // 在小程序中，模拟调用接口
     function retrieveHomeData() {
       $('#send-btn').bind('click', (e) => {
         let name = $('#name').val()
@@ -62,6 +62,7 @@
           }
         })
       })
+
       $('#share-btn').bind('click', (e) => {
         console.log('share btn click')
         wx.miniProgram.postMessage({
