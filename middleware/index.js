@@ -38,20 +38,21 @@ module.exports = app => {
     },
   })
 
-  app.use(async (ctx, next) => { // 自定义中间件：打印出执行时间
-    await next()
-    const rt = ctx.response.get('X-Response-Time')
-    console.log(`执行时间：${ctx.method} ${ctx.url} - ${rt}`)
-  })
+  // app.use(async (ctx, next) => { // 自定义中间件：打印出执行时间
+  //   await next()
+  //   const rt = ctx.response.get('X-Response-Time')
+  //   console.log(`执行时间：${ctx.method} ${ctx.url} - ${rt}`)
+  // })
 
-  app.use(async (ctx, next) => { // 自定义中间件：统计执行时间
-    const start = Date.now()
-    await next()
-    const ms = Date.now() - start
-    ctx.set('X-Response-Time', `${ms}ms`)
-  })
+  // app.use(async (ctx, next) => { // 自定义中间件：统计执行时间
+  //   const start = Date.now()
+  //   await next()
+  //   const ms = Date.now() - start
+  //   ctx.set('X-Response-Time', `${ms}ms`)
+  // })
 
-  // koa-session会自动将生成的session写入cookie里，也可以将session存储在外部store里，需要配合koa-session-local一起使用
+  // 测试用
+  // koa-session会自动将生成的sessionid写入cookie里，也可以将session存储在外部store里，需要配合koa-session-local一起使用
   app.keys = ['koakeys'] // 加密cookie时的密钥
   const CONFIG = {
     store: new store(), // 生成的 session 存在外部store里

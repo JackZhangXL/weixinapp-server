@@ -16,14 +16,14 @@ const router = new Router({ // 用前缀来自定义一个路由群组，后续�
   prefix: '/user'
 })
 
-router.use(async (ctx, next) => { // 自定义中间件：处理401：被koajwt挡住的请求，没有token或者token过期，会返回401
+router.use(async (ctx, next) => { // 自定义中间件：处理401：被koa-jwt挡住的请求，没有token或者token过期，会返回401
   try {
     await next()
   } catch (err) {
     console.log('401', err)
     if (err.status === 401) {
       ctx.status = 401
-      ctx.body = '验证失败，未登录'
+      ctx.body = '401，koa-jwt校验失败，未登录' // 访问 http://localhost:3000/user/home
     } else {
       throw err;
     }
@@ -39,16 +39,13 @@ router.use(koajwt({ secret: config.jwtSecret }).unless({ // 自定义中间件�
 }))
 
 router.use(async (ctx, next) => { // 自定义中间件：验证token
-  if (!ctx.url.includes('login') && !ctx.url.includes('web-view')) {
+  if (!ctx.url.includes('login') && !ctx.url.includes('web-view')) { // 例子页面中点击send按钮模拟验证二跳页
     try {
       let token = ctx.request.header.authorization
-      console.log('token', token)
       token = token.split(' ')[1]
       let payload = await util.promisify(jsonwebtoken.verify)(token, config.jwtSecret) // 如果签名不对，这里会报错，走到catch分支
-      console.log('payload', payload)
       let { openId, nickName, avatarUrl, uid } = payload
       ctx['user'] = { openId, nickName, avatarUrl, uid }
-      console.log("openId, nickName, avatarUrl", openId, nickName, avatarUrl)
       await next()
     } catch (err) {
       console.log('err', err)
@@ -59,30 +56,30 @@ router.use(async (ctx, next) => { // 自定义中间件：验证token
   }
 })
 
-// 测试用路径：/user/login
-// 访问 http://localhost:3000/user/login，返回400
-// 访问 http://localhost:3000/user/login?name=zxl&password=zxl，返回200
-router.get('/login', function (ctx) {
-  let { name, password } = ctx.request.query
-  if (name == 'zxl' && password == 'zxl') { // 正常情况下是将用户名和密码查数据库，这里为了模拟就写死
-    ctx.status = 200
-    ctx.body = {
-      code: 200,
-      msg: '登录成功',
-      token: "Bearer " + jsonwebtoken.sign( // 用户名密码验证通过就生成token
-        { name: name },
-        config.jwtSecret,
-        { expiresIn: '1d' }
-      )
-    }
-  } else {
-    ctx.status = 400
-    ctx.body = {
-      code: 400,
-      msg: '用户名密码错误'
-    }
-  }
-})
+// // 测试用路径：/user/login
+// // 访问 http://localhost:3000/user/login，返回400
+// // 访问 http://localhost:3000/user/login?name=zxl&password=zxl，返回200
+// router.get('/login', function (ctx) {
+//   let { name, password } = ctx.request.query
+//   if (name == 'zxl' && password == 'zxl') { // 正常情况下是将用户名和密码查数据库，这里为了模拟就写死
+//     ctx.status = 200
+//     ctx.body = {
+//       code: 200,
+//       msg: '登录成功',
+//       token: "Bearer " + jsonwebtoken.sign( // 用户名密码验证通过就生成token
+//         { name: name },
+//         config.jwtSecret,
+//         { expiresIn: '1d' }
+//       )
+//     }
+//   } else {
+//     ctx.status = 400
+//     ctx.body = {
+//       code: 400,
+//       msg: '用户名密码错误'
+//     }
+//   }
+// })
 
 // 测试用路径：/user/home
 // curl 'http://localhost:3000/user/login?name=zxl&password=zxl' 得到token：
@@ -103,7 +100,6 @@ router.all('/home', async function (ctx) {
 router.all('/web-view', async function (ctx) {
   const token = ctx.request.query.token
   ctx.session.sessionKeyRecordId = ~~ctx.session.sessionKeyRecordId + 1
-  console.log('web-view router ctx.session: ', ctx.session)
 
   if (token) {
     ctx.cookies.set('Authorization', `Bearer ${token}`, { httpOnly: false }) // url 上的 token 写入 cookie
@@ -119,7 +115,6 @@ router.all('/web-view', async function (ctx) {
 // 开始微信登录
 const weixinAuth = new WeixinAuth(config.miniProgram.appId, config.miniProgram.appSecret);
 router.post("/weixin-login", async (ctx) => {
-  console.log('request.body', ctx.request.body)
   let { 
     code, // 小程序登录时传递的参数
     userInfo, // 小程序登录时传递的参数
@@ -132,45 +127,48 @@ router.post("/weixin-login", async (ctx) => {
 
   let sessionKey
   if (sessionKeyIsValid) { // 如果客户端有token，则传来，解析
-    let token = ctx.request.header.authorization;
+    let token = ctx.request.header.authorization
     token = token.split(' ')[1]
     if (token) {
       let payload = await util.promisify(jsonwebtoken.verify)(token, config.jwtSecret).catch(err => {
         console.log('err', err);
       })
-      console.log('payload', payload);
-      if (payload) sessionKey = payload.sessionKey
+      console.log('payload', payload)
+      if (payload) {
+        sessionKey = payload.sessionKey
+      }
     }
   }
-  // // 除了尝试从token中获取sessionKey，还可以从数据库中或服务器redis缓存中获取
-  // // 如果在db或redis中存储，可以与cookie结合起来使用，
-  // // 目前没有这样做，sessionKey仍然存在丢失的时候，又缺少一个wx.clearSession方法
-  // console.log("ctx.session.sessionKeyRecordId", ctx.session.sessionKeyRecordId);
-  // if (sessionKeyIsValid && !sessionKey && ctx.session.sessionKeyRecordId) {
-  //   let sessionKeyRecordId = ctx.session.sessionKeyRecordId
-  //   console.log("sessionKeyRecordId", sessionKeyRecordId);
-  //   // 如果还不有找到历史上有效的sessionKey，从db中取一下
-  //   let sesskonKeyRecordOld = await SessionKey.findOne({
-  //     where: {
-  //       id: ctx.session.sessionKeyRecordId
-  //     }
-  //   })
-  //   if (sesskonKeyRecordOld) sessionKey = sesskonKeyRecordOld.sessionKey
-  //   console.log("从db中查找sessionKey3", sessionKey);
-  // }
+  
+  // 除了尝试从token中获取sessionKey，还可以从数据库中或服务器redis缓存中获取
+  // 如果在db或redis中存储，可以与cookie结合起来使用，
+  // 目前没有这样做，sessionKey仍然存在丢失的时候，又缺少一个wx.clearSession方法
+  console.log("ctx.session.sessionKeyRecordId", ctx.session.sessionKeyRecordId);
+  if (sessionKeyIsValid && !sessionKey && ctx.session.sessionKeyRecordId) {
+    let sessionKeyRecordId = ctx.session.sessionKeyRecordId
+    console.log("sessionKeyRecordId", sessionKeyRecordId);
+    // 如果还不有找到历史上有效的sessionKey，从db中取一下
+    let sesskonKeyRecordOld = await SessionKey.findOne({
+      where: {
+        id: ctx.session.sessionKeyRecordId
+      }
+    })
+    if (sesskonKeyRecordOld) sessionKey = sesskonKeyRecordOld.sessionKey
+    console.log("从db中查找sessionKey3", sessionKey);
+  }
+
   if (!sessionKey) {
-    const token = await weixinAuth.getAccessToken(code) // 如果从token中没有取到，则从服务器上取一次
-    sessionKey = token.data.session_key // 目前微信的 session_key, 有效期3天
+    const token = await weixinAuth.getAccessToken(code) // 通过微信接口：https://api.weixin.qq.com/sns/jscode2session 去取token
+    sessionKey = token.data.session_key
     console.log('sessionKey2', sessionKey)
   }
 
   let decryptedUserInfo
   var pc = new WXBizDataCrypt(config.miniProgram.appId, sessionKey)
-  // 有可能因为sessionKey不与code匹配，而出错
-  // 通过错误，通知前端再重新拉取code
-  decryptedUserInfo = pc.decryptData(encryptedData, iv)
-  console.log('解密后 decryptedUserInfo.openId: ', decryptedUserInfo.openId)
+  decryptedUserInfo = pc.decryptData(encryptedData, iv) // 服务端调研微信提供的解密方式解密
+  console.log('解密后 decryptedUserInfo: ', decryptedUserInfo) // { openId, nickName, gender, language, city, province, country, avatarUrl, watermark }
 
+  // 将用户保存到db里
   let user = await User.findOne({ where: { openId: decryptedUserInfo.openId } })
   if (!user) { //如果用户没有查到，则创建
     let createRes = await User.create(decryptedUserInfo)
@@ -194,7 +192,7 @@ router.post("/weixin-login", async (ctx) => {
   ctx.session.sessionKeyRecordId = sessionKeyRecord.id
   console.log("sessionKeyRecordId", sessionKeyRecord.id);
 
-  // 添加上openId与sessionKey
+  // 对用户施加 jwt 签名
   let authorizationToken = jsonwebtoken.sign({
     uid: user.id,
     nickName: decryptedUserInfo.nickName,
@@ -205,7 +203,7 @@ router.post("/weixin-login", async (ctx) => {
     config.jwtSecret,
     { expiresIn: '3d' }
   )
-  Object.assign(decryptedUserInfo, { authorizationToken })
+  Object.assign(decryptedUserInfo, { authorizationToken }) // 微信客户端wx.login的success回调里会得到这个 jwt 签名，后续在webview的url上带上
 
   ctx.status = 200
   ctx.body = {
