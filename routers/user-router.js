@@ -113,7 +113,7 @@ router.all('/web-view', async function (ctx) {
 })
 
 // 开始微信登录
-const weixinAuth = new WeixinAuth(config.miniProgram.appId, config.miniProgram.appSecret);
+const weixinAuth = new WeixinAuth(config.miniProgram.appId, config.miniProgram.appSecret)
 router.post("/weixin-login", async (ctx) => {
   let { 
     code, // 小程序登录时传递的参数
@@ -127,6 +127,7 @@ router.post("/weixin-login", async (ctx) => {
 
   let sessionKey
   if (sessionKeyIsValid) { // 如果客户端有token，则传来，解析
+    console.log('weixin-login, has token from client')
     let token = ctx.request.header.authorization
     token = token.split(' ')[1]
     if (token) {
@@ -159,14 +160,22 @@ router.post("/weixin-login", async (ctx) => {
 
   if (!sessionKey) {
     const token = await weixinAuth.getAccessToken(code) // 通过微信接口：https://api.weixin.qq.com/sns/jscode2session 去取token
+    console.log('weixin-login token', token)
+    // {
+    //   data: { 
+    //     session_key: 'G/hkdglAE8T3PKnpr6lpSg==',
+    //     expires_in: 7200,
+    //     openid: 'omObr0CLULqt_AFnwefrpSnk0KE8',
+    //     create_at: 1617246457260 
+    //   } 
+    // }
     sessionKey = token.data.session_key
-    console.log('sessionKey2', sessionKey)
   }
 
-  let decryptedUserInfo
-  var pc = new WXBizDataCrypt(config.miniProgram.appId, sessionKey)
-  decryptedUserInfo = pc.decryptData(encryptedData, iv) // 服务端调研微信提供的解密方式解密
-  console.log('解密后 decryptedUserInfo: ', decryptedUserInfo) // { openId, nickName, gender, language, city, province, country, avatarUrl, watermark }
+  const pc = new WXBizDataCrypt(config.miniProgram.appId, sessionKey)
+  let decryptedUserInfo = pc.decryptData(encryptedData, iv) // 用encryptedData，iv和token里的session_key去解密
+  console.log('解密后 decryptedUserInfo: ', decryptedUserInfo) 
+  // { openId, nickName, gender, language, city, province, country, avatarUrl, watermark }
 
   // 将用户保存到db里
   let user = await User.findOne({ where: { openId: decryptedUserInfo.openId } })
